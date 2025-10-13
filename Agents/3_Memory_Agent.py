@@ -23,6 +23,11 @@ def process_message(state: AgentState) -> AgentState:
     # Append the AI's response to the message history
     state["message"].append(AIMessage(content=response.content))
 
+    # debugging print to show memory state
+    print("Current Conversation History:")
+    for message in state["message"]:
+        print(f" - {message.content}")
+
     return state
 
 # Build the state graph for the agent with memory
@@ -32,8 +37,27 @@ graph.add_edge(START, "process_message")
 graph.add_edge("process_message", END)
 agent = graph.compile()
 
+def load_conversation_from_file(filename: str) -> List[Union[HumanMessage, AIMessage]]:
+    """Load conversation history from a file."""
+    history = []
+    try:
+        with open(filename, "r") as file:
+            lines = file.readlines()
+            for line in lines:
+                if line.startswith("You: "):
+                    content = line.replace("You: ", "")
+                    history.append(HumanMessage(content=content))
+                elif line.startswith("AI: "):
+                    content = line.replace("AI: ", "")
+                    history.append(AIMessage(content=content))
+    except FileNotFoundError:
+        print(f"File not found: {filename}")
+    except Exception as e:
+        print(f"Error loading conversation history: {e}")
+    return history
+
 # Initialize conversation history to maintain context
-conversation_history: List[Union[HumanMessage, AIMessage]] = []
+conversation_history = load_conversation_from_file("logging.txt")
 
 # Example usage of the agent with memory
 user_input = input("Enter your message: ")
