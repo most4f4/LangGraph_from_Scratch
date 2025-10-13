@@ -12,10 +12,12 @@ load_dotenv()
 # This is a global variable storing document content
 document_content = ""
 
+# ----------------------------- State Definition -----------------------------
 class AgentState(TypedDict):
     """Defines the structure of the agent's state."""
     messages: Annotated[Sequence[BaseMessage], add_messages]
 
+# --------------------------------- Tools -------------------------------------
 @tool
 def update(content: str) -> str:
     """This tool updates the document with new content."""
@@ -44,8 +46,10 @@ def save(filename: str) -> str:
 
 tools = [update, save]
 
+# ----------------------------- Model Setup ------------------------------
 model = ChatOpenAI(model="gpt-4").bind_tools(tools)
 
+# ----------------------------- Agent Logic -----------------------------
 def our_agent(state: AgentState) -> AgentState:
     system_prompt = SystemMessage(content=f"""
         You are Drafter, a helpful writing assistant. You are going to help the user update and modify documents.
@@ -57,12 +61,10 @@ def our_agent(state: AgentState) -> AgentState:
         The current document content is:{document_content}
         """)
     
-    # If there are no previous messages, start the conversation with a greeting.
     if not state["messages"]:
-        user_input = "I'm ready to help you update a document. What would you like to create?"
+        user_input = "Greet Me and tell me that you are ready to help me update a document. What would I like to create?"
         user_message = HumanMessage(content=user_input)
 
-    # Otherwise, get the user's input from the last message.
     else:
         user_input = input("\nWhat would you like to do with the document? ")
         print(f"\n👤 USER: {user_input}")
@@ -98,29 +100,23 @@ def should_continue(state: AgentState) -> str:
             "document" in message.content.lower()):
             return "end" # goes to the end edge which leads to the endpoint
         
-        return "continue"
+    return "continue"
 
-
+# ----------------------------- Message Printer -----------------------------
 def print_messages(messages):
-    """Function to print the messages in a more readable format"""
+    """Prints last 3 messages for readability."""
     if not messages:
         return
-    
     for message in messages[-3:]:
         if isinstance(message, ToolMessage):
             print(f"\n🛠️ TOOL RESULT: {message.content}")
 
-
+# ----------------------------- Build the Graph -----------------------------
 graph = StateGraph(AgentState)
-
 graph.add_node("agent", our_agent)
 graph.add_node("tools", ToolNode(tools))
-
 graph.set_entry_point("agent")
-
 graph.add_edge("agent", "tools")
-
-
 graph.add_conditional_edges(
     "tools",
     should_continue,
@@ -129,14 +125,16 @@ graph.add_conditional_edges(
         "end": END,
     },
 )
-
 app = graph.compile()
 
+# ----------------------------- Run the Agent -----------------------------
 def run_document_agent():
     print("\n ===== DRAFTER =====")
-    
+
+    # Initialize state with this AI message
     state = {"messages": []}
     
+    # --- Start interactive loop ---
     for step in app.stream(state, stream_mode="values"):
         if "messages" in step:
             print_messages(step["messages"])
