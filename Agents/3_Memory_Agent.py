@@ -22,12 +22,7 @@ def process_message(state: AgentState) -> AgentState:
     
     # Append the AI's response to the message history
     state["message"].append(AIMessage(content=response.content))
-
-    # debugging print to show memory state
-    print("Current Conversation History:")
-    for message in state["message"]:
-        print(f" - {message.content}")
-
+    
     return state
 
 # Build the state graph for the agent with memory
@@ -68,8 +63,10 @@ while user_input.lower() != "exit":
     # Update the conversation history with the latest state, because it includes the AI response
     conversation_history = result["message"]
 
-    user_input = input("Enter your message: ")
+    # Keep last 10 messages (5 user–AI pairs)
+    conversation_history = conversation_history[-10:]
 
+    user_input = input("Enter your message: ")
 
 # Write the conversation history to a file
 with open("logging.txt", "w") as file:
@@ -83,21 +80,3 @@ with open("logging.txt", "w") as file:
     file.write("End of Conversation")
 
 print("Conversation saved to logging.txt")
-
-
-# -----------------------------------------------------------------------
-# Note on state and memory
-# -----------------------------------------------------------------------
-# When you call: result = agent.invoke({"message": conversation_history})
-# You’re actually passing a reference (not a copy) of the conversation_history list into the state dictionary.
-# That means: state["message"] → conversation_history
-# What happens next inside the agent
-
-# Inside the process_message() function:
-
-# response = llm.invoke(state["message"])
-# state["message"].append(AIMessage(content=response.content))
-
-# When it appends the AI message, it’s appending to that same list that was passed in — which is the same list as conversation_history.
-# So even though you didn’t explicitly append to conversation_history inside this function, 
-# it’s still being modified because both state["message"] and conversation_history are references to the same list.
