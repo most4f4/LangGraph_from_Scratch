@@ -1,5 +1,4 @@
 /.vscode/
 .env
 logging.txt
-*.txt
 Agents/chroma_db/
